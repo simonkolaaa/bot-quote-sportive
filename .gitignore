@@ -1,0 +1,25 @@
+# Environment variables
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+env/
+venv/
+ENV/
+
+# Distribution / packages
+dist/
+build/
+*.egg-info/
+
+# Reports
+*.xlsx
+
+# Editor / System
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

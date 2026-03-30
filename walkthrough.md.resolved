@@ -1,0 +1,40 @@
+# Walkthrough - Analista Sportivo Virtuale 🤖⚽
+
+Il bot è stato completato e configurato per automatizzare l'analisi delle scommesse sportive per Serie A, Premier League e La Liga.
+
+## Funzionalità Implementate
+
+1.  **Scraping Multi-Sito**: 
+    - Estrazione dei pronostici "proposta base" dal sito di **MondoPengwin**.
+    - Recupero delle quote in tempo reale da **Eurobet** (gestione SPA con Playwright).
+2.  **Integrazione Dati Professionali**:
+    - Connessione a **SportAPI (Sofascore)** su RapidAPI per recuperare classifiche, punti e stato di forma.
+3.  **Analisi con Intelligenza Artificiale**: 
+    - Utilizzo di **Google Gemini** per incrociare i dati e filtrare solo le 3-5 migliori giocate del weekend (Value Bets).
+4.  **Reporting Automatico**:
+    - Generazione di un file **Excel** strutturato con i consigli dell'AI e le motivazioni tecniche.
+    - Invio automatico del report tramite **Telegram Bot API**.
+
+## Architettura del Progetto
+
+- **`scrapers/`**: Moduli per la raccolta dati web (Playwright).
+- **`services/`**: Integrazioni API (SportAPI, Gemini, Telegram/Excel).
+- **`main.py`**: Orchestratore che esegue il flusso completo.
+- **`.env.example`**: Template per le chiavi API necessarie.
+- **`.gitignore`**: Configurato per escludere file sensibili (.env) e file temporanei.
+
+## Guida all'Uso
+
+1.  Rinomina `.env.example` in `.env`.
+2.  Inserisci le tue chiavi API (`TELEGRAM_TOKEN`, `CHAT_ID`, `X_RAPIDAPI_KEY`, `GEMINI_API_KEY`).
+3.  Esegui il bot con:
+    ```bash
+    python main.py
+    ```
+
+> [!IMPORTANT]
+> - Assicurati di avere una connessione internet attiva per lo scraping.
+> - Se Eurobet cambia i selettori CSS, i file in `scrapers/` potrebbero aver bisogno di un piccolo aggiornamento.
+
+---
+Progetto consegnato con successo! 🚀
