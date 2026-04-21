@@ -1,4 +1,5 @@
 import asyncio
+import logging
 from playwright.async_api import async_playwright
 import re
 
@@ -16,7 +17,7 @@ class MondopengwinScraper:
 
             for league in self.leagues:
                 url = f"{self.base_url}{league}/"
-                print(f"Scraping league: {league}...")
+                logging.info(f"Scraping league: {league}...")
                 await page.goto(url)
                 
                 # Handle cookie/disclaimer if present
@@ -69,12 +70,13 @@ class MondopengwinScraper:
                         "prediction": prediction,
                         "url": art_url
                     })
-                    print(f"  Found: {teams} -> {prediction}")
+                    logging.info(f"  Found: {teams} -> {prediction}")
 
             await browser.close()
             return all_predictions
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     scraper = MondopengwinScraper()
     results = asyncio.run(scraper.get_predictions())
-    print(f"Total predictions found: {len(results)}")
+    logging.info(f"Total predictions found: {len(results)}")
