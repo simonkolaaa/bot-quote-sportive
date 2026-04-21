@@ -1,6 +1,7 @@
-import pandas as pd
 import requests
 import os
+import logging
+from tabulate import tabulate
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -10,41 +11,55 @@ class Reporter:
         self.telegram_token = os.getenv("TELEGRAM_TOKEN")
         self.chat_id = os.getenv("CHAT_ID")
 
-    def generate_excel(self, data_list, filename="Top_Giocate_Weekend.xlsx"):
-        df = pd.DataFrame(data_list)
-        try:
-            df.to_excel(filename, index=False)
-            print(f"Report Excel generato: {filename}")
-            return filename
-        except Exception as e:
-            print(f"Errore nella generazione Excel: {e}")
-            return None
+    def format_as_table(self, data_list):
+        if not data_list or not isinstance(data_list, list):
+            return "Nessun dato disponibile."
 
-    def send_to_telegram(self, file_path, caption="📊 Analisi premium del weekend pronta!"):
+        headers = ["Partita", "Quota", "Consiglio AI", "Analisi"]
+        table_data = []
+
+        for item in data_list:
+            # Shorten the analysis to fit better in mobile view if possible
+            analisi = item.get('Analisi_Tecnica', '')
+            if len(analisi) > 100:
+                analisi = analisi[:97] + "..."
+
+            table_data.append([
+                item.get('Partita', 'N/D'),
+                item.get('Quota_Eurobet', 'N/D'),
+                item.get('Giocata_Suggerita', 'N/D'),
+                analisi
+            ])
+
+        return tabulate(table_data, headers=headers, tablefmt="simple")
+
+    def send_to_telegram(self, data, caption="📊 Analisi premium del weekend pronta!"):
         if not self.telegram_token or not self.chat_id:
-            print("Telegram Token o Chat ID non configurati")
+            logging.error("Telegram Token o Chat ID non configurati")
             return False
 
-        url = f"https://api.telegram.org/bot{self.telegram_token}/sendDocument"
+        url = f"https://api.telegram.org/bot{self.telegram_token}/sendMessage"
         
         try:
-            with open(file_path, "rb") as file:
-                files = {"document": file}
-                data = {"chat_id": self.chat_id, "caption": caption}
-                response = requests.post(url, files=files, data=data)
-                
-                if response.status_code == 200:
-                    print("File inviato correttamente su Telegram.")
-                    return True
-                else:
-                    print(f"Errore invio Telegram: {response.text}")
-                    return False
+            table_html = self.format_as_table(data)
+            message_text = f"{caption}\n\n<pre>{table_html}</pre>"
+
+            data_req = {
+                "chat_id": self.chat_id,
+                "text": message_text,
+                "parse_mode": "HTML"
+            }
+            response = requests.post(url, data=data_req)
+
+            if response.status_code == 200:
+                logging.info("Messaggio inviato correttamente su Telegram.")
+                return True
+            else:
+                logging.error(f"Errore invio Telegram: {response.text}")
+                return False
         except Exception as e:
-            print(f"Errore durante l'invio Telegram: {e}")
+            logging.error(f"Errore durante l'invio Telegram: {e}")
             return False
 
 if __name__ == "__main__":
-    # Test
-    # reporter = Reporter()
-    # reporter.generate_excel([{"Test": "Successo"}])
     pass

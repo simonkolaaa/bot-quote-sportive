@@ -1,4 +1,5 @@
 import asyncio
+import logging
 from playwright.async_api import async_playwright
 
 class EurobetScraper:
@@ -17,7 +18,7 @@ class EurobetScraper:
             all_odds = []
 
             for league_name, url in self.leagues.items():
-                print(f"Scraping odds for: {league_name}...")
+                logging.info(f"Scraping odds for: {league_name}...")
                 await page.goto(url)
                 
                 # Handle cookie banner
@@ -32,7 +33,7 @@ class EurobetScraper:
                 try:
                     await page.wait_for_selector(".bet-hub__players", timeout=20000)
                 except:
-                    print(f"  Timeout waiting for matches in {league_name}")
+                    logging.warning(f"  Timeout waiting for matches in {league_name}")
                     continue
 
                 # Get all match containers
@@ -59,15 +60,16 @@ class EurobetScraper:
                                 "odds_x": odd_x,
                                 "odds_2": odd_2
                             })
-                            print(f"  Match: {teams} | 1: {odd_1}, X: {odd_x}, 2: {odd_2}")
+                            logging.info(f"  Match: {teams} | 1: {odd_1}, X: {odd_x}, 2: {odd_2}")
                     except Exception as e:
-                        # print(f"  Error parsing match: {e}")
+                        logging.debug(f"  Error parsing match: {e}")
                         continue
 
             await browser.close()
             return all_odds
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     scraper = EurobetScraper()
     results = asyncio.run(scraper.get_odds())
-    print(f"Total matches found: {len(results)}")
+    logging.info(f"Total matches found: {len(results)}")
