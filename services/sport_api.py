@@ -13,6 +13,8 @@ class SportAPI:
             "X-RapidAPI-Host": self.api_host
         }
         self.base_url = f"https://{self.api_host}/api/v1"
+        self.session = requests.Session()
+        self.session.headers.update(self.headers)
         
         # Tournament IDs for Sofascore
         self.tournaments = {
@@ -32,35 +34,52 @@ class SportAPI:
         # Let's assume we can get it via /tournament/{id}/standings/total (some APIs support this)
         
         url = f"{self.base_url}/unique-tournament/{tournament_id}/standings/total"
-        response = requests.get(url, headers=self.headers)
         
-        if response.status_code == 200:
-            return response.json()
+        for attempt in range(3):
+            try:
+                response = self.session.get(url, timeout=10)
+                if response.status_code == 200:
+                    return response.json()
+                elif response.status_code == 429:
+                    print(f"⚠️ Rate limit raggiunto per Sofascore. Attesa 2s... (Tentativo {attempt+1})")
+                    import time
+                    time.sleep(2)
+                else:
+                    return None
+            except Exception as e:
+                print(f"Errore connessione SportAPI: {e}")
+                return None
         return None
 
-    def get_team_performance(self, team_name, league_name):
-        # This is a bit complex as we need to match team names
-        # For now, let's return a summary of standings for that team
+    def get_match_performance(self, team_home, team_away, league_name):
         standings = self.get_standings(league_name)
         if not standings:
-            return "Statistiche non disponibili"
+            return "Statistiche classifica non disponibili"
         
-        # Parse standings rows
+        home_stats = "N/D"
+        away_stats = "N/D"
+        
         try:
             rows = standings.get('standings', [{}])[0].get('rows', [])
             for row in rows:
-                if team_name.lower() in row.get('team', {}).get('name', '').lower():
-                    pos = row.get('position')
-                    pts = row.get('points')
-                    matches = row.get('matches')
-                    wins = row.get('wins')
-                    draws = row.get('draws')
-                    losses = row.get('losses')
-                    return f"Pos: {pos}, Punti: {pts}, W/D/L: {wins}/{draws}/{losses} su {matches} gare"
-        except:
-            pass
+                team_name_api = row.get('team', {}).get('name', '').lower()
+                
+                # Cerca un match parziale per essere flessibili sui nomi (es. "Inter" in "Inter Milan")
+                if team_home.lower() in team_name_api or team_name_api in team_home.lower():
+                    pos = row.get('position', '?')
+                    pts = row.get('points', '?')
+                    w, d, l = row.get('wins', '?'), row.get('draws', '?'), row.get('losses', '?')
+                    home_stats = f"Pos:{pos} Pti:{pts} W{w}-D{d}-L{l}"
+                    
+                if team_away.lower() in team_name_api or team_name_api in team_away.lower():
+                    pos = row.get('position', '?')
+                    pts = row.get('points', '?')
+                    w, d, l = row.get('wins', '?'), row.get('draws', '?'), row.get('losses', '?')
+                    away_stats = f"Pos:{pos} Pti:{pts} W{w}-D{d}-L{l}"
+        except Exception as e:
+            print(f"Errore parsing classifica: {e}")
             
-        return "Team non trovato in classifica"
+        return f"{team_home} [{home_stats}] vs {team_away} [{away_stats}]"
 
 if __name__ == "__main__":
     # Test (requires API key)

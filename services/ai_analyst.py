@@ -1,6 +1,7 @@
 import google.generativeai as genai
 import os
 import json
+import typing
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -22,39 +23,36 @@ class AIAnalyst:
             print("⚠️ Nessun dato ricevuto per l'analisi AI.")
             return []
 
+        class MatchAnalysis(typing.TypedDict):
+            Campionato: str
+            Squadra_Casa: str
+            Squadra_Trasferta: str
+            Quota_Eurobet: str
+            Consiglio_Pengwin: str
+            Giocata_Suggerita: str
+            Analisi_Tecnica: str
+            Affidabilita_1_10: str
+
         prompt = f"""
-        Agisci da analista betting professionista. Ti fornirò una lista di partite con quote e statistiche.
+        Agisci da analista betting professionista e amante del rischio leggero. Ti fornirò una lista di partite con quote e statistiche.
         Dati:
         {json.dumps(matches_data, indent=2)}
 
         Obiettivo:
-        Filtra il rumore e seleziona SOLO le 3-5 partite con il valore più alto (Value Bet).
-        Per ogni partita scelta, fornisci un'analisi dettagliata.
-
-        Restituiscimi un file JSON rigoroso (senza testo extra) con questa struttura:
-        [
-          {{
-            "Campionato": "Nome Campionato",
-            "Squadra_Casa": "Nome Squadra Casa",
-            "Squadra_Trasferta": "Nome Squadra Trasferta",
-            "Quota_Eurobet": "Es: 1.85",
-            "Consiglio_Pengwin": "Il pronostico base",
-            "Giocata_Suggerita": "La tua giocata definitiva",
-            "Analisi_Tecnica": "Motivazione tecnica basata sui dati di forma e quote",
-            "Affidabilita_1_10": "Voto da 1 a 10"
-          }}
-        ]
+        Seleziona SOLO le 3-5 partite con il valore più alto (Value Bet). 
+        DEVI PRENDERE DEI RISCHI CALCOLATI: non limitarti alle quote basse e sicure. Cerca l'azzardo intelligente analizzando lo stato di forma (W/D/L, Posizione) e i consigli di Pengwin. Se vedi una squadra sfavorita (quota alta > 2.00) che però ha un'ottima forma recente rispetto all'avversario, SCEGLILA.
+        Per ogni partita scelta, fornisci un'analisi dettagliata e aggressiva.
         """
 
         try:
-            response = self.model.generate_content(prompt)
+            response = self.model.generate_content(
+                prompt,
+                generation_config=genai.GenerationConfig(
+                    response_mime_type="application/json",
+                    response_schema=list[MatchAnalysis]
+                )
+            )
             text = response.text
-            
-            # Extract JSON from potential markdown backticks
-            if "```json" in text:
-                text = text.split("```json")[1].split("```")[0]
-            elif "```" in text:
-                text = text.split("```")[1].split("```")[0]
             
             cleaned_text = text.strip()
             if not cleaned_text:

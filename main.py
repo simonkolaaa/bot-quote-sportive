@@ -8,13 +8,15 @@ from services.reporter import Reporter
 async def main():
     print("🚀 Avvio Analista Sportivo Virtuale...")
     
-    # 1. Raccolta Pronostici Pengwin
+    # 1 & 2. Raccolta Dati Parallela (Pengwin + Eurobet)
+    print("🔄 Avvio scrapers in parallelo...")
     pengwin = MondopengwinScraper()
-    predictions = await pengwin.get_predictions()
-    
-    # 2. Raccolta Quote Eurobet
     eurobet = EurobetScraper()
-    odds = await eurobet.get_odds()
+    
+    predictions, odds = await asyncio.gather(
+        pengwin.get_predictions(),
+        eurobet.get_odds()
+    )
     
     # 3. Integrazione Statistiche e Match Dati
     api = SportAPI()
@@ -25,9 +27,22 @@ async def main():
         # Trova quote corrispondenti
         match_odds = next((o for o in odds if pred['teams'].lower() in o['teams'].lower() or o['teams'].lower() in pred['teams'].lower()), None)
         
-        # Recupera stats per la squadra in casa (semplificato)
-        team_home = pred['teams'].split(" vs ")[0] if " vs " in pred['teams'] else pred['teams'].split(" ")[0]
-        stats = api.get_team_performance(team_home, pred['league'])
+        # Filtro Calendario: se non ci sono quote, la partita è passata o non disponibile
+        if not match_odds:
+            print(f"⏩ Salto {pred['teams']}: match già giocato o quote non disponibili.")
+            continue
+        
+        # Recupera stats per entrambe le squadre
+        if " vs " in pred['teams'] or "-" in pred['teams']:
+            separator = " vs " if " vs " in pred['teams'] else "-"
+            parts = pred['teams'].split(separator)
+            team_home = parts[0].strip()
+            team_away = parts[1].strip() if len(parts) > 1 else ""
+        else:
+            team_home = pred['teams'].split(" ")[0]
+            team_away = ""
+
+        stats = api.get_match_performance(team_home, team_away, pred['league']) if team_away else "Dati insuff."
         
         combined_data.append({
             "Match": pred['teams'],

@@ -32,18 +32,15 @@ class MondopengwinScraper:
                 except:
                     pass
 
-                # Get all article links - New selectors found
-                articles = await page.query_selector_all(".campionato_container a, .articoli_evidenza_campionato a")
+                # Get all article links
+                articles = await page.query_selector_all("a")
                 article_urls = []
                 for art in articles:
                     href = await art.get_attribute("href")
-                    if href and href not in article_urls:
+                    if href and "statistiche-quote-e-pronostico" in href.lower() and href not in article_urls:
                         article_urls.append(href)
 
                 for art_url in article_urls[:5]: # Limit to last 5 articles
-                    if "pronostico" not in art_url.lower():
-                        continue
-                        
                     await page.goto(art_url)
                     await asyncio.sleep(1)
                     
@@ -66,10 +63,12 @@ class MondopengwinScraper:
                         search_str = "Analisi e pronostico di Kristian Pengwin:"
                         if search_str in content:
                             sub_content = content.split(search_str)[-1]
-                            # Clean up the prediction
-                            match = re.search(r"(?:proposta base|giocata consigliata|pronostico).*?:?\s*(.*)", sub_content, re.IGNORECASE)
-                            if match:
-                                prediction = match.group(1).strip().split("\n")[0]
+                            # Look for sentences containing keywords
+                            sentences = sub_content.replace('\n', ' ').split('.')
+                            for s in sentences:
+                                if 'pronostico' in s.lower() or 'quota' in s.lower() or 'combo' in s.lower() or 'puntare' in s.lower():
+                                    prediction = s.strip() + "."
+                                    break
                         
                         all_predictions.append({
                             "league": league,

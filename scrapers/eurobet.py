@@ -22,11 +22,14 @@ class EurobetScraper:
                 
                 # Handle cookie banner
                 try:
-                    cookie_btn = await page.wait_for_selector('button:has-text("Accetto")', timeout=10000)
+                    cookie_btn = await page.wait_for_selector('button#onetrust-accept-btn-handler', timeout=5000)
                     if cookie_btn:
                         await cookie_btn.click()
                 except:
                     pass
+                
+                # Attesa del caricamento dinamico
+                await asyncio.sleep(5)
 
                 # Wait for match cards to load
                 try:
@@ -41,19 +44,22 @@ class EurobetScraper:
                 for element in match_elements:
                     try:
                         # Extract team names
-                        teams_el = await element.query_selector(".bet-hub__players")
-                        if not teams_el:
+                        teams_el = await element.query_selector_all(".bet-hub__players div")
+                        if len(teams_el) < 2:
                             continue
-                        teams_text = await teams_el.inner_text()
-                        teams = teams_text.replace("\n", " - ")
+                        team_home = await teams_el[0].inner_text()
+                        team_away = await teams_el[1].inner_text()
+                        teams = f"{team_home.strip()} - {team_away.strip()}"
                         
                         # Extract odds (1, X, 2)
-                        # The pattern for 1X2 market is usually the first 3 odds buttons
-                        odds_labels = await element.query_selector_all(".odds__footer")
-                        if len(odds_labels) >= 3:
-                            odd_1 = await odds_labels[0].inner_text()
-                            odd_x = await odds_labels[1].inner_text()
-                            odd_2 = await odds_labels[2].inner_text()
+                        odd_1_el = await element.query_selector("div:nth-child(4) div")
+                        odd_x_el = await element.query_selector("div:nth-child(5) div")
+                        odd_2_el = await element.query_selector("div:nth-child(6) div")
+                        
+                        if odd_1_el and odd_x_el and odd_2_el:
+                            odd_1 = await odd_1_el.inner_text()
+                            odd_x = await odd_x_el.inner_text()
+                            odd_2 = await odd_2_el.inner_text()
                             
                             all_odds.append({
                                 "league": league_name,

@@ -1,0 +1,12 @@
+version: '3.8'
+
+services:
+  bot-quote-sportive:
+    build: .
+    container_name: bot-quote-sportive
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      # Monta la cartella locale per permettere al bot di salvare il file Excel all'esterno del container
+      - .:/app
