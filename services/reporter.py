@@ -11,13 +11,30 @@ class Reporter:
         self.chat_id = os.getenv("CHAT_ID")
 
     def generate_excel(self, data_list, filename="Top_Giocate_Weekend.xlsx"):
+        if not data_list:
+            print("⚠️ Nessun dato da inserire nell'Excel.")
+            return None
+            
         df = pd.DataFrame(data_list)
+        
+        # Riordina le colonne se presenti
+        standard_order = [
+            "Campionato", "Squadra_Casa", "Squadra_Trasferta", 
+            "Quota_Eurobet", "Affidabilita_1_10", 
+            "Giocata_Suggerita", "Consiglio_Pengwin", "Analisi_Tecnica"
+        ]
+        
+        # Filtra solo le colonne effettivamente presenti nei dati
+        existing_cols = [c for c in standard_order if c in df.columns]
+        other_cols = [c for c in df.columns if c not in standard_order]
+        df = df[existing_cols + other_cols]
+
         try:
             df.to_excel(filename, index=False)
-            print(f"Report Excel generato: {filename}")
+            print(f"✅ Report Excel generato con successo: {filename}")
             return filename
         except Exception as e:
-            print(f"Errore nella generazione Excel: {e}")
+            print(f"❌ Errore nella generazione Excel: {e}")
             return None
 
     def send_to_telegram(self, file_path, caption="📊 Analisi premium del weekend pronta!"):

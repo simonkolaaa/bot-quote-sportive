@@ -21,55 +21,66 @@ class MondopengwinScraper:
                 
                 # Handle cookie/disclaimer if present
                 try:
-                    # Accept cookies
-                    cookie_btn = await page.wait_for_selector('button:has-text("Accetto")', timeout=5000)
-                    if cookie_btn:
-                        await cookie_btn.click()
+                    # Accept cookies - coordinate generic check
+                    await asyncio.sleep(2)
                     
-                    # Handle "PROMETTO" if it pops up
-                    prometto_btn = await page.wait_for_selector('button:has-text("PROMETTO")', timeout=5000)
+                    # Cerca pulsante PROMETTO
+                    prometto_btn = await page.wait_for_selector('button:has-text("PROMETTO")', timeout=10000)
                     if prometto_btn:
                         await prometto_btn.click()
+                        print("  Pop-up 'PROMETTO' chiuso.")
                 except:
                     pass
 
-                # Get all article links
-                articles = await page.query_selector_all(".article_title a")
-                article_urls = [await art.get_attribute("href") for art in articles]
+                # Get all article links - New selectors found
+                articles = await page.query_selector_all(".campionato_container a, .articoli_evidenza_campionato a")
+                article_urls = []
+                for art in articles:
+                    href = await art.get_attribute("href")
+                    if href and href not in article_urls:
+                        article_urls.append(href)
 
-                for art_url in article_urls[:10]: # Limit to last 10 articles for now
+                for art_url in article_urls[:5]: # Limit to last 5 articles
                     if "pronostico" not in art_url.lower():
                         continue
                         
                     await page.goto(art_url)
+                    await asyncio.sleep(1)
                     
-                    title = await page.inner_text("h1")
-                    # Extract teams from title (usually TEAM-A-TEAM-B-...)
-                    teams = title.split(" STATISTICHE")[0].replace("-", " ")
-                    
-                    # Extract prediction
-                    content = await page.inner_text(".entry-content")
-                    
-                    # Look for the "proposta base" section
-                    prediction = "Non trovato"
-                    search_str = "Analisi e pronostico di Kristian Pengwin:"
-                    if search_str in content:
-                        parts = content.split(search_str)
-                        if len(parts) > 1:
-                            # The prediction is usually in the last few paragraphs of this section
-                            sub_content = parts[1]
-                            # Look for "proposta base" or similar
-                            match = re.search(r"(?:proposta base|giocata consigliata|Il nostro consiglio|pronostico).*?:?\s*(.*)", sub_content, re.IGNORECASE)
+                    try:
+                        title_el = await page.query_selector("h1.title")
+                        if not title_el:
+                            title_el = await page.query_selector("h1")
+                        
+                        title = await title_el.inner_text()
+                        teams = title.split(" STATISTICHE")[0].split(" ANALISI")[0].replace("-", " ").strip()
+                        
+                        # Extract prediction from #pengwincontent
+                        content_el = await page.query_selector("#pengwincontent")
+                        if not content_el:
+                            content_el = await page.query_selector(".entry-content")
+                            
+                        content = await content_el.inner_text()
+                        
+                        prediction = "Non trovato"
+                        search_str = "Analisi e pronostico di Kristian Pengwin:"
+                        if search_str in content:
+                            sub_content = content.split(search_str)[-1]
+                            # Clean up the prediction
+                            match = re.search(r"(?:proposta base|giocata consigliata|pronostico).*?:?\s*(.*)", sub_content, re.IGNORECASE)
                             if match:
                                 prediction = match.group(1).strip().split("\n")[0]
-                    
-                    all_predictions.append({
-                        "league": league,
-                        "teams": teams,
-                        "prediction": prediction,
-                        "url": art_url
-                    })
-                    print(f"  Found: {teams} -> {prediction}")
+                        
+                        all_predictions.append({
+                            "league": league,
+                            "teams": teams,
+                            "prediction": prediction,
+                            "url": art_url
+                        })
+                        print(f"  Found: {teams} -> {prediction}")
+                    except Exception as e:
+                        print(f"  Error parsing article {art_url}: {e}")
+                        continue
 
             await browser.close()
             return all_predictions

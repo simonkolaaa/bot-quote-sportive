@@ -30,34 +30,37 @@ class EurobetScraper:
 
                 # Wait for match cards to load
                 try:
-                    await page.wait_for_selector(".bet-hub__players", timeout=20000)
+                    await page.wait_for_selector(".bet-hub__row", timeout=30000)
                 except:
                     print(f"  Timeout waiting for matches in {league_name}")
                     continue
 
                 # Get all match containers
-                match_elements = await page.query_selector_all(".bet-hub__row.bet-hub__row--box")
+                match_elements = await page.query_selector_all(".bet-hub__row")
                 
                 for element in match_elements:
                     try:
                         # Extract team names
                         teams_el = await element.query_selector(".bet-hub__players")
+                        if not teams_el:
+                            continue
                         teams_text = await teams_el.inner_text()
                         teams = teams_text.replace("\n", " - ")
                         
                         # Extract odds (1, X, 2)
-                        odds_elements = await element.query_selector_all(".bet-hub__odd")
-                        if len(odds_elements) >= 3:
-                            odd_1 = await odds_elements[0].inner_text()
-                            odd_x = await odds_elements[1].inner_text()
-                            odd_2 = await odds_elements[2].inner_text()
+                        # The pattern for 1X2 market is usually the first 3 odds buttons
+                        odds_labels = await element.query_selector_all(".odds__footer")
+                        if len(odds_labels) >= 3:
+                            odd_1 = await odds_labels[0].inner_text()
+                            odd_x = await odds_labels[1].inner_text()
+                            odd_2 = await odds_labels[2].inner_text()
                             
                             all_odds.append({
                                 "league": league_name,
                                 "teams": teams,
-                                "odds_1": odd_1,
-                                "odds_x": odd_x,
-                                "odds_2": odd_2
+                                "odds_1": odd_1.strip(),
+                                "odds_x": odd_x.strip(),
+                                "odds_2": odd_2.strip()
                             })
                             print(f"  Match: {teams} | 1: {odd_1}, X: {odd_x}, 2: {odd_2}")
                     except Exception as e:
