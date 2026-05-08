@@ -1,5 +1,6 @@
 import asyncio
 from playwright.async_api import async_playwright
+from playwright_stealth import Stealth
 import re
 
 class MondopengwinScraper:
@@ -10,7 +11,8 @@ class MondopengwinScraper:
     async def get_predictions(self):
         async with async_playwright() as p:
             browser = await p.chromium.launch(headless=True)
-            page = await browser.new_page()
+            page = await browser.new_page(user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36")
+            await Stealth().apply_stealth_async(page)
             
             all_predictions = []
 
@@ -63,12 +65,15 @@ class MondopengwinScraper:
                         search_str = "Analisi e pronostico di Kristian Pengwin:"
                         if search_str in content:
                             sub_content = content.split(search_str)[-1]
-                            # Look for sentences containing keywords
-                            sentences = sub_content.replace('\n', ' ').split('.')
-                            for s in sentences:
-                                if 'pronostico' in s.lower() or 'quota' in s.lower() or 'combo' in s.lower() or 'puntare' in s.lower():
-                                    prediction = s.strip() + "."
-                                    break
+                            if "Non ancora disponibile" in sub_content:
+                                prediction = "Non ancora disponibile."
+                            else:
+                                # Look for sentences containing keywords
+                                sentences = sub_content.replace('\n', ' ').split('.')
+                                for s in sentences:
+                                    if 'pronostico' in s.lower() or 'quota' in s.lower() or 'combo' in s.lower() or 'puntare' in s.lower():
+                                        prediction = s.strip() + "."
+                                        break
                         
                         all_predictions.append({
                             "league": league,

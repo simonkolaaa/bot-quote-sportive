@@ -1,5 +1,6 @@
 import asyncio
 from playwright.async_api import async_playwright
+from playwright_stealth import Stealth
 
 class EurobetScraper:
     def __init__(self):
@@ -11,8 +12,9 @@ class EurobetScraper:
 
     async def get_odds(self):
         async with async_playwright() as p:
-            browser = await p.chromium.launch(headless=True)
-            page = await browser.new_page()
+            browser = await p.chromium.launch(headless=False)
+            page = await browser.new_page(user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36")
+            await Stealth().apply_stealth_async(page)
             
             all_odds = []
 
@@ -64,13 +66,13 @@ class EurobetScraper:
                             all_odds.append({
                                 "league": league_name,
                                 "teams": teams,
-                                "odds_1": odd_1.strip(),
-                                "odds_x": odd_x.strip(),
-                                "odds_2": odd_2.strip()
+                                "odds_1": odd_1.replace('\n', ' ').strip(),
+                                "odds_x": odd_x.replace('\n', ' ').strip(),
+                                "odds_2": odd_2.replace('\n', ' ').strip()
                             })
                             print(f"  Match: {teams} | 1: {odd_1}, X: {odd_x}, 2: {odd_2}")
                     except Exception as e:
-                        # print(f"  Error parsing match: {e}")
+                        print(f"  Error parsing match: {e}")
                         continue
 
             await browser.close()
